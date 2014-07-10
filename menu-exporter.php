@@ -4,36 +4,36 @@
  * Plugin Name: Menu Exporter
  * Plugin URI: http://humanmade.co.uk
  * Description: Lets you only export your WordPress menus
- * Version: 1
+ * Version: 1.1
  * Author: Joe Hoyle - Human Made Limited
  * Author URI: http://humanmade.co.uk/
  *
  */
- 
+
 /**
  * Temporarily hacks the nav_menu_item post type to set builtin to false to it shows up under eport options.
- * 
+ *
  */
 function me_show_menu_post_type_in_export_options() {
-	
+
 	global $wp_post_types;
 	$wp_post_types['nav_menu_item']->_builtin = false;
-	
+
 }
 add_action( 'load-export.php', 'me_show_menu_post_type_in_export_options' );
 
 /**
  * The normal WordPress exporter API does not provide enough hooks etc, so we hijack the export page and run our own.
- * 
+ *
  */
 function me_catch_menu_export() {
-	
+
 	if( !isset( $_GET['download'] ) || empty( $_GET['content'] ) || $_GET['content'] !== 'nav_menu_item' )  {
 		return;
 	}
-	
+
 	me_export_wp();
-			
+	exit;
 }
 add_action( 'load-export.php', 'me_catch_menu_export' );
 
@@ -57,7 +57,7 @@ function me_export_wp( $args = array() ) {
 	$where = $wpdb->prepare( "{$wpdb->posts}.post_type = %s", 'nav_menu_item' );
 
 	// grab a snapshot of post IDs, just in case it changes during the export
-	$post_ids = $wpdb->get_col( "SELECT ID FROM {$wpdb->posts} $join WHERE $where" );
+	$post_ids = $wpdb->get_col( "SELECT ID FROM {$wpdb->posts} WHERE $where" );
 
 	/**
 	 * Wrap given string in XML CDATA tag.
@@ -122,25 +122,27 @@ function me_export_wp( $args = array() ) {
 			echo "</wp:term>\n";
 		}
 	}
-	
+
 	function me_wxr_nav_menu_item_terms_and_posts( &$post_ids ) {
-		
+
 		$posts_to_add = array();
-		
+
 		foreach( $post_ids as $post_id ) {
-			
+
 			if( ($type = get_post_meta( $post_id, '_menu_item_type', true ) ) == 'taxonomy' ) {
 				$term = get_term( get_post_meta( $post_id, '_menu_item_object_id', true ), ($tax = get_post_meta( $post_id, '_menu_item_object', true )) );
-				
-				echo "\t<wp:term><wp:term_id>{$term->term_id}</wp:term_id><wp:term_taxonomy>{$tax}</wp:term_taxonomy><wp:term_slug>{$term->slug}</wp:term_slug>";
-				wxr_term_name( $term );
-				echo "</wp:term>\n";
+
+				if( $term && !is_wp_error( $term ) ){
+					echo "\t<wp:term><wp:term_id>{$term->term_id}</wp:term_id><wp:term_taxonomy>{$tax}</wp:term_taxonomy><wp:term_slug>{$term->slug}</wp:term_slug>";
+					wxr_term_name( $term );
+					echo "</wp:term>\n";
+				}
 			} elseif( $type == 'post_type' && in_array( get_post_meta( $post_id, '_menu_item_object', true ), array( 'post', 'page' ) ) ) {
 
 				$posts_to_add[] = get_post_meta( $post_id, '_menu_item_object_id', true );
 			}
-			
-			
+
+
 		}
 		$post_ids = array_merge( $posts_to_add, $post_ids );
 	}
