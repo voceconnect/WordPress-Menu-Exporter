@@ -1,0 +1,10 @@
+{
+    "name": "humanmade/WordPress-Menu-Exporter",
+    "description": "A simple plugin which enables you to only export the WordPress menus",
+    "keywords": ["wordpress", "menu", "export"],
+    "license": "GPLv2+",
+    "type": "wordpress-plugin",
+    "autoload": {
+        "files": ["menu-exporter.php"]
+    }
+}
